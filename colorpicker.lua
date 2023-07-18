@@ -9,6 +9,7 @@ local screen_size = (function()
 	return {x=w;y=h;}
 end)();
 
+
 local function clamp(a,b,c) return (a > c) and c or (a < b) and b or a end
 
 local function rgb_to_hsv(r, g, b)
@@ -72,6 +73,14 @@ local groups = {
 	"anti aim indicator color"
 }
 
+local function set_gui_value(gui_item, value)
+	if gui.GetValue(gui_item) == value then
+		return
+	end
+	
+	gui.SetValue(gui_item, value)
+end
+
 local on_blue_team = false;
 
 local Config = {
@@ -95,22 +104,22 @@ local Config = {
 		local data = self.data;
 
 		for _, key in pairs({1, 6, 7, 8, 9}) do
-			gui.SetValue(groups[key], tonumber("0x" .. data[key]))
+			set_gui_value(groups[key], tonumber("0x" .. data[key]))
 		end
 
 		if self.team_based and not on_blue_team then
-			gui.SetValue(groups[4], tonumber("0x" .. data[2]))
-			gui.SetValue(groups[5], tonumber("0x" .. data[3]))
-			gui.SetValue(groups[2], tonumber("0x" .. data[4]))
-			gui.SetValue(groups[3], tonumber("0x" .. data[5]))
+			set_gui_value(groups[4], tonumber("0x" .. data[2]))
+			set_gui_value(groups[5], tonumber("0x" .. data[3]))
+			set_gui_value(groups[2], tonumber("0x" .. data[4]))
+			set_gui_value(groups[3], tonumber("0x" .. data[5]))
 
 			return
 		end
 
-		gui.SetValue(groups[2], tonumber("0x" .. data[2]))
-		gui.SetValue(groups[3], tonumber("0x" .. data[3]))
-		gui.SetValue(groups[4], tonumber("0x" .. data[4]))
-		gui.SetValue(groups[5], tonumber("0x" .. data[5]))
+		set_gui_value(groups[2], tonumber("0x" .. data[2]))
+		set_gui_value(groups[3], tonumber("0x" .. data[3]))
+		set_gui_value(groups[4], tonumber("0x" .. data[4]))
+		set_gui_value(groups[5], tonumber("0x" .. data[5]))
 	end;
 
 	write = function(self)
