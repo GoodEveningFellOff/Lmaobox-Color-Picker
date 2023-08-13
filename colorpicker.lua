@@ -1,8 +1,3 @@
---[[
-  Open and close the color picker by typing "colorpicker" into the console
-  The lua only has one config to save and load colors :|
-]]
-
 local screen_size = (function()
 	local w, h = draw.GetScreenSize();
 
@@ -70,7 +65,8 @@ local groups = {
 	"aimbot target color",
 	"gui color",
 	"night mode color",
-	"anti aim indicator color"
+	"anti aim indicator color",
+	"prop color"
 }
 
 local function set_gui_value(gui_item, value)
@@ -82,6 +78,27 @@ local function set_gui_value(gui_item, value)
 end
 
 local on_blue_team = false;
+
+local Props = {
+	stored = "ffffffff";
+
+	r =	1;
+	g = 1;
+	b = 1;
+	a = 1;
+	
+	set = function(self, hex)
+		if hex == self.stored then
+			return
+		end
+		
+		self.stored = hex;
+		self.r = tonumber("0x" .. hex:sub(1, 2)) / 255;
+		self.g = tonumber("0x" .. hex:sub(3, 4)) / 255;
+		self.b = tonumber("0x" .. hex:sub(5, 6)) / 255;
+		self.a = tonumber("0x" .. hex:sub(7, 8)) / 255;
+	end
+};
 
 local Config = {
 	path = engine.GetGameDir() .. "\\cfg\\coolcolors.cfg";
@@ -95,7 +112,8 @@ local Config = {
 		"00ff00ff",
 		"ffffffff",
 		"808080ff",
-		"ffd500ff"
+		"ffd500ff",
+		"ffffffff"
 	};
 
 	team_based = false;
@@ -106,6 +124,8 @@ local Config = {
 		for _, key in pairs({1, 6, 7, 8, 9}) do
 			set_gui_value(groups[key], tonumber("0x" .. data[key]))
 		end
+
+		Props:set(data[10])
 
 		if self.team_based and not on_blue_team then
 			set_gui_value(groups[4], tonumber("0x" .. data[2]))
@@ -127,7 +147,7 @@ local Config = {
 
 		local fstr = self.team_based and "1" or "0";
 
-		for i = 1, 9 do
+		for i = 1, 10 do
 			fstr = fstr .. self.data[i];
 		end
 
@@ -148,7 +168,7 @@ local Config = {
 
 		self.team_based = fstr:sub(1,1) == '1';
 
-		for i = 1, 9 do
+		for i = 1, 10 do
 			local this_str = fstr:sub((i-1)*8 + 2, i*8 + 1);
 
 			if tonumber("0x" .. this_str) then
@@ -262,6 +282,26 @@ local textures = {
 		0xff, 0xff, 0xff, 0xff
 	), 2, 2);
 
+	fill_circle = (function()
+		local chars = {};
+
+		local size = 2^6;
+		local increment_per_pixel = 2/(size - 1);
+
+		for h = -1, 1, increment_per_pixel do
+			local hh = h*h;
+
+			for w = -1, 1, increment_per_pixel do
+				local p, r = #chars, math.sqrt(hh + w*w);
+
+				chars[p + 1], chars[p + 2], chars[p + 3] = 255, 255, 255;
+				chars[p + 4] = (r <= 1) and 255 or math.floor(clamp(1 - ((r-1)/0.005), 0, 1)*255);
+			end
+		end
+
+		return draw.CreateTextureRGBA(string.char(table.unpack(chars)), size, size)
+	end)();
+
 	unload = function(self)
 		for _, id in pairs(self.main_box) do
 			draw.DeleteTexture(id)
@@ -270,6 +310,7 @@ local textures = {
 		draw.DeleteTexture(self.hue_rect)
 		draw.DeleteTexture(self.alpha_rect)
 		draw.DeleteTexture(self.trans_box)
+		draw.DeleteTexture(self.fill_circle)
 	end;
 };
 
@@ -372,7 +413,9 @@ local ColorPicker = {
 			self.x = clamp(mx - Mouse.dx, 3, screen_size.x - 223)
 			self.y = clamp(my - Mouse.dy, 3, screen_size.y - 264)
 
-		elseif Mouse.interact_id ~= 6 then return end
+		elseif Mouse.interact_id ~= 6 then 
+			return 
+		end
 
 		Config.data[self.visible_group] = hsv_to_hex(self.h, self.s, self.v, self.a);
 		Config:save()
@@ -425,18 +468,19 @@ local ColorPicker = {
 		local x_2 = x + 200 - math.floor(a * 200);
 		local y_2 = y + math.floor(200 * h / 360);
 
-		draw.OutlinedRect(x_1 - 3, y_1 - 3, x_1 + 3, y_1 + 3)
-		draw.OutlinedRect(x_2 - 3, y + 207, x_2 + 3, y + 223)
-		draw.OutlinedRect(x + 207, y_2 - 3, x + 223, y_2 + 3)
-	
 		draw.Color(33, 33, 33, 50)
-		draw.OutlinedRect(x_1 - 4, y_1 - 4, x_1 + 4, y_1 + 4)
+		draw.TexturedRect(textures.fill_circle, x_1 - 6, y_1 - 6, x_1 + 6, y_1 + 6)
 		draw.OutlinedRect(x_2 - 4, y + 206, x_2 + 4, y + 224)
 		draw.OutlinedRect(x + 206, y_2 - 4, x + 224, y_2 + 4)
 
+		draw.Color(100, 100, 100, 255)
+		draw.TexturedRect(textures.fill_circle, x_1 - 5, y_1 - 5, x_1 + 5, y_1 + 5)
+		draw.OutlinedRect(x_2 - 3, y + 207, x_2 + 3, y + 223)
+		draw.OutlinedRect(x + 207, y_2 - 3, x + 223, y_2 + 3)
+	
 		-- Selection Indicator Magnification
 		draw.Color(r, g, b, 255)
-		draw.FilledRect(x_1 - 2, y_1 - 2, x_1 + 2, y_1 + 2)
+		draw.TexturedRect(textures.fill_circle, x_1 - 4, y_1 - 4, x_1 + 4, y_1 + 4)
 
 		local clr = math.floor(a * 255);
 		draw.Color(clr, clr, clr, 255)
@@ -504,6 +548,11 @@ callbacks.Register("SendStringCmd", function(cmd)
 		visible = not visible;
 		cmd:Set('')
 	end
+end)
+
+callbacks.Register("DrawStaticProps", function(ctx)
+	ctx:StudioSetColorModulation(Props.r, Props.g, Props.b)
+	ctx:StudioSetAlphaModulation(Props.a)
 end)
 
 callbacks.Register("Unload", function()
